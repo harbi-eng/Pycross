@@ -27,7 +27,7 @@ class net:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.msg = Messages(not mode)
         self.missing_packages = []
-        self.keywords = ['setPyPy', ]  # all the set method from the master class
+        self.keywords = ['setPyPy','pycross()']  # all the set method from the master class
         self.Pycross = []  # all of the pycross objects names that the user used in his/her code
 
         self.MainFile = None
@@ -146,7 +146,6 @@ class net:
             return None
 
         _, ID, src, dst, msg, dataLength = self.msg.unpack(header)
-
         data = self.recvall(self.clinet, dataLength)
 
         return msg, pickle.loads(data)

@@ -8,12 +8,12 @@ from net import net
 class pycross:
     def __init__(self):
         self.message_number=0
+        self.interpreters=[]
+        self.Proc=[]
 
     def make_sharedmemory(self,size=2000):
         self.SharedMemory = SharedMemory(1, size=size)
         self.slavePath = __file__[::-1].replace('pycross.py'[::-1], 'slave.py'[::-1], 1)[::-1]
-        self.interpreters=[]
-        self.Proc=[]
 
     def setPyPy(self,path):
         self._pypy=path

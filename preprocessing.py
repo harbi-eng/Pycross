@@ -12,6 +12,8 @@ def filesetup(keywords,code):
         for line in line_per_key:
             obj_name = line.split(".")[0].replace(" ", "")
             if obj_name not in objects:
+                if '=' in obj_name:
+                    obj_name=obj_name.split('=')[0]
                 objects.append("@" + obj_name)
                 objects.append(obj_name)
 

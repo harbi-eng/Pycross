@@ -10,7 +10,7 @@ import preprocessing
 class Slave:
     def __init__(self,ID=1,name=None):
         self.ID=ID
-        self.keywords=['setPyPy']
+        self.keywords=['setPyPy','pycross()']
         self.Pycross=[]
         self.MainFile=None
         if len(sys.argv)>1:
@@ -30,7 +30,6 @@ class Slave:
         host = socket.gethostbyname(socket.gethostname())
         self.net = net(0, host, 1700)
         while 1:
-            try:
                 msg, data = self.net.recv()
                 msg=msg.replace(' ','') #remove white spaces from the message
 
@@ -40,9 +39,8 @@ class Slave:
                 if end:
                     break
 
-            except Exception as e:
                 self.net.socket.close()
-            self.net.socket.close()
+                self.net.socket.close()
 
 
     def mainLoop(self):

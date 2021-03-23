@@ -1,7 +1,3 @@
-"""                           12
-[cap][head1][head2][M1][M2][newName][SharedMemory]
-"""
-
 
 import mmap
 import struct
@@ -57,6 +53,7 @@ class SharedMemory:
 
         self.message = Messages.Messages(mode)
 
+
     def nameGen(self,size=17):
         return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(size))
 
@@ -65,14 +62,14 @@ class SharedMemory:
         t0=time.time()
         while 1:
             message = self.ReadMessage()
-            if message != b'\x00':
+            if message[4] != '\x00\x00\x00\x00':
                 break
             if time.time()-t0>limt:
                 time.sleep(0.01)
-        print(message)
         #     0        1    2    3        4        5
         #headerLength, ID, src, dst, dataLength, data
-        self.functions.get(message[5])()
+
+        self.functions.get(message[4].replace(" ",""))()
         return message
 
 
@@ -89,8 +86,6 @@ class SharedMemory:
 
         else:
             self.size = size + self.metaDataSize
-            self.size=self.size+mmap.PAGESIZE-(self.size%mmap.PAGESIZE)
-
             self.SharedMemory = posix_ipc.SharedMemory(name, size=self.size)
             self.mem = mmap.mmap(self.SharedMemory.fd, self.size, mmap.MAP_SHARED, mmap.PROT_WRITE)
 
@@ -114,7 +109,6 @@ class SharedMemory:
 
     @cap.setter
     def cap(self, value):
-#        print(len(self.mem))
 
         self.mem[0:4] = struct.pack("<I", value)
 
@@ -128,8 +122,8 @@ class SharedMemory:
 
     def MemCheck(self, length):
         if length > self.size-self.metaDataSize:
-
-            raise Exception("the data is bigger than the shared memory")
+            print(length,self.size)
+            raise Exception(f"the data size {length} is bigger than the shared memory ")
         while self.cap < length:
             with self.sem1: time.sleep(0.0001)
 
@@ -155,9 +149,7 @@ class SharedMemory:
 
     def __Mread(self):
         with self.sem1:
-#            s_index = self.cap + self.head
             slave_head=struct.unpack("<i",self.mem[8:12])[0]
-#            print(self.cap,(struct.unpack("<i",self.Buff[8:12])[0]-struct.unpack("<i",self.Buff[4:8])[0] +12),abs(self.cap-(struct.unpack("<i",self.Buff[8:12])[0]-struct.unpack("<i",self.Buff[4:8])[0]+12)))
             slave_byte_stream = self.mem[slave_head:self.size]
             self.cap = self.size - self.head + self.metaDataSize
 

@@ -1,16 +1,18 @@
 from pycross import pycross
+import socket
 
 PyCross = pycross()
-PyCross.make_sharedmemory()
+PyCross.make_sharedmemory(100208)
 PyCross.setPyPy('/home/void/anaconda3/envs/pypy_env/bin/pypy3')
 
-
+HOST = socket.gethostbyname(socket.gethostname())
+PORT = 1700
 
 @PyCross.pypy()
-def func1(a,b):
-    size:int=10000
+def func1():
+    size:int=100000
     v:list[int] =[0]*size
-    v[5000]=0
+    v[size//2]=1
     Ttotal:float=0.0
     repetation:int=30
     for i in range(repetation):
@@ -18,23 +20,9 @@ def func1(a,b):
             for y in range(size-2,0,-1):
                 val:int = v[y-1] << 2 | v[y] << 1 | v[y+1]
                 v[y] = (val ==3 or val == 5 or val == 6)
-    return 11
+    return v
 
 
 if __name__ == '__main__':
-    func1(4,5)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ans=func1()
+    print(ans)

@@ -1,12 +1,13 @@
 import struct
 import mmap
 import time
+import pickle
 
 class Messages:
     def __init__(self,mode):#message max size = 5 bytes
         # shared memory
         self.mode=mode
-        self.b_len = 20
+        self.msg_len=4
 
         if mode:
             self.ptr_read=12
@@ -15,28 +16,41 @@ class Messages:
             self.ptr_read=37
             self.ptr_write=12
 
-    def pack(self, data, ID, src, dst):
 
+    def pack(self, msg, ID, src, dst,data=None):
         ID  = struct.pack('<i', ID)
         src = struct.pack('<i', src)
         dst = struct.pack('<i', dst)
-        headerLength = struct.pack('<i', self.b_len)
+        msg+=" "*(self.msg_len-len(msg))
 
-        dataBytes = struct.pack(f'{len(data)}s', data.encode())  # .encode()
+        msgBytes = msg.encode()  # .encode()
+        if data is None:
+            headerLength = struct.pack('<i', 20)    #in case data is None, the header len is 20
+            packed=headerLength+ID + src + dst + msgBytes
+            return packed
+
+        headerLength = struct.pack('<i', 24)    #in case data is not None, the header len is 24
+
+        dataBytes  = pickle.dumps(data)
         dataLength = struct.pack('<i', len(dataBytes))
 
-        return headerLength + ID +src +dst +dataLength+dataBytes
+        packed=headerLength + ID +src +dst +msgBytes+dataLength+dataBytes
+        return packed
 
 
-    def unpack(self,msg):
-        headerLength = struct.unpack('<i', msg[:4])[0]
-        ID = struct.unpack('<i', msg[4:8])[0]
-        src = struct.unpack('<i', msg[8:12])[0]
-        dst = struct.unpack('<i', msg[12:16])[0]
-        dataLength = struct.unpack('<i', msg[16:20])[0]
-        if dataLength==0:
+#headerlen,id,src,dst,msg,datalen,
+    def unpack(self,packet):
+        headerLength = struct.unpack('<i', packet[0:4])[0]
+        ID = struct.unpack('<i', packet[4:8])[0]
+        src = struct.unpack('<i', packet[8:12])[0]
+        dst = struct.unpack('<i', packet[12:16])[0]
+        msg = packet[16:20].decode().replace(" ","")
+
+        if len(msg)==0:
             return b'\x00'
+        if headerLength==20:
+            return headerLength, ID, src, dst, msg
 
-        data = msg[20:20+dataLength].decode()
+        dataLength = struct.unpack('<i', packet[20:24])[0]
+        return headerLength, ID, src, dst, msg,dataLength
 
-        return headerLength, ID, src, dst, dataLength, data

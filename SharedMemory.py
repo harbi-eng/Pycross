@@ -12,14 +12,10 @@ class SharedMemory:
     def __init__(self, mode, lock1="LOCK1", lock2="LOCK2", lock3="LOCK3", lock4="LOCK4", size=1024 * 20, name=None):
         self.__Queue = []
         self.mode = mode
-
         self.META_DATA_SIZE = 52
         self.__MSG_LEN = 20
-
         self.name = self.__random_name_generator() if name is None else name
-
         self.__shared_mem_setup(mode, size)
-
         self.__sem1 = posix_ipc.Semaphore(lock1, posix_ipc.O_CREAT)
 
         if mode:
@@ -30,7 +26,6 @@ class SharedMemory:
         self.__functions = {
             'R': self.__recv,
         }
-
         self.__message = Messages.Messages()
 
     def __master_init(self,lock2,lock3,lock4):

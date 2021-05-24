@@ -1,11 +1,11 @@
-# from pycross import SharedMemory
 import sys
-import re
 from net import net
 import socket
-from SharedMemory import SharedMemory
 from importlib import import_module
 import preprocessing
+from std_overwrite import output,error
+
+
 
 class Slave:
     def __init__(self,ID=1,name=None):
@@ -14,6 +14,7 @@ class Slave:
         self.Pycross=[]
         self.MainFile=None
         if len(sys.argv)>1:
+            from SharedMemory import SharedMemory
             self.ID=int(sys.argv[3])
             self.SharedMemory = SharedMemory(0,size=int(sys.argv[4]),name=sys.argv[1])
             self.FileSetUp()
@@ -24,11 +25,20 @@ class Slave:
     def FileSetUp(self):
         with open(sys.argv[2],"r") as file:
             preprocessing.filesetup(self.keywords,file.read())
-            self.MainFile = import_module('MainFile')
+        self.MainFile = import_module('MainFile')
 
     def mainNet(self):
         host = socket.gethostbyname(socket.gethostname())
-        self.net = net(0, host, 1700)
+
+
+        self.net = net(0, host, 1701)
+
+        stdout = output(self.net)
+        stderr = error(self.net)
+
+        sys.stdout = stdout
+        sys.stderr = stderr
+
         while 1:
                 msg, data = self.net.recv()
                 msg=msg.replace(' ','') #remove white spaces from the message
@@ -45,16 +55,13 @@ class Slave:
 
     def mainLoop(self):
         while 1:
-#            headerLength, ID, src, dst, dataLength, data
-            Hlen,ID,SRC,DST,MSG=self.SharedMemory.wait()
-
-            funcName,args,kwargs = self.SharedMemory.Read()
-
+            data=self.SharedMemory.wait()
+            Hlen,ID,SRC,DST,MSG = data
+            funcName,args,kwargs = self.SharedMemory.recv()
             Func = getattr(self.MainFile,funcName)
             result = Func(*args,**kwargs)
 
-            self.SharedMemory.Write(result,ID,self.ID,SRC)
-            # break
+            self.SharedMemory.send(result,ID,self.ID,SRC)
 
 
 

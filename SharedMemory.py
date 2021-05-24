@@ -31,7 +31,7 @@ class SharedMemory:
             'R': self.__recv,
         }
 
-        self.__message = Messages.Messages(mode)
+        self.__message = Messages.Messages()
 
     def __master_init(self,lock2,lock3,lock4):
         self.__sem3 = posix_ipc.Semaphore(lock3, posix_ipc.O_CREAT)

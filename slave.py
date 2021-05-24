@@ -3,7 +3,7 @@ from net import net
 import socket
 from importlib import import_module
 import preprocessing
-from std_overwrite import output,error
+from std_override import output,error
 
 
 

@@ -3,17 +3,8 @@ import serializer
 
 class Messages:
     def __init__(self,mode):
-        self.mode=mode
         self.msg_len=4
-
-        if mode:
-            self.ptr_read=12
-            self.ptr_write=37
-        else:
-            self.ptr_read=37
-            self.ptr_write=12
-
-
+        
     def pack(self, msg, ID, src, dst,data=None):
         ID  = struct.pack('<i', ID)
         src = struct.pack('<i', src)

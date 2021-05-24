@@ -2,7 +2,7 @@ import struct
 import serializer
 
 class Messages:
-    def __init__(self,mode):
+    def __init__(self):
         self.msg_len=4
         
     def pack(self, msg, ID, src, dst,data=None):

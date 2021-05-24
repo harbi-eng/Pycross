@@ -1,9 +1,7 @@
-from SharedMemory   import  *
 import subprocess
 import inspect
 import sys
 from net import net
-
 
 class pycross:
     def __init__(self):
@@ -12,6 +10,8 @@ class pycross:
         self.Proc=[]
 
     def make_sharedmemory(self,size=2000):
+        from SharedMemory import SharedMemory
+
         self.SharedMemory = SharedMemory(1, size=size)
         self.slavePath = __file__[::-1].replace('pycross.py'[::-1], 'slave.py'[::-1], 1)[::-1]
 
@@ -25,7 +25,7 @@ class pycross:
             mainFile=sys.argv[0].split("/")[-1]
 
             self.Proc.append(subprocess.Popen(f'{interpreter} {self.slavePath} {self.SharedMemory.name}'
-                                              f' {mainFile} {len(self.interpreters)} {self.SharedMemory.size-self.SharedMemory.metaDataSize}',
+                                              f' {mainFile} {len(self.interpreters)} {self.SharedMemory.size-self.SharedMemory.META_DATA_SIZE}',
                                               shell=True,stdout=sys.stdout,stderr=sys.stderr,))
 
 
@@ -52,15 +52,13 @@ class pycross:
 
                 else:
                     self.__is_exist(self._pypy)
-                    funcName = inspect.getsource(function).split()[2][:-3]
-                    self.SharedMemory.Write((funcName, args, kwargs),self.message_number,0,self.interpreters.index(self._pypy)+1)
+                    def_line = inspect.getsource(function).split('\n')[1]
+                    funcName = def_line[4:def_line.find('(')]
+                    self.SharedMemory.send((funcName, args, kwargs),self.message_number,0,
+                                           self.interpreters.index(self._pypy)+1)
                     self.message_number+=1
-
-                    self.SharedMemory.ReadMessage()
-
                     self.SharedMemory.wait()
-
-                    ans = self.SharedMemory.Read()
+                    ans = self.SharedMemory.recv()
                     return ans
 
             return wrapper
@@ -69,7 +67,3 @@ class pycross:
     def __del__(self):
         for proc in self.Proc:
             proc.kill()
-
-    def Resize(self,size):
-        self.SharedMemory.Resize(size)
-

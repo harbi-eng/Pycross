@@ -1,14 +1,13 @@
 import socket
 import re
-import inspect
 import pickle
-import sys
-import time
 from Messages import Messages
 from importlib import import_module
-import struct
 import os
 import preprocessing
+import sys
+
+
 """
 required messages:
       # 1)send function     ->SF
@@ -18,6 +17,9 @@ required messages:
         5)read function     ->RF
         6)read main file    ->RMF
         7)read packages     ->RP
+        
+        8)read output       ->RO
+        9)read error        ->RE
 
 """
 
@@ -27,8 +29,8 @@ class net:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.msg = Messages(not mode)
         self.missing_packages = []
-        self.keywords = ['setPyPy','pycross()']  # all the set method from the master class
-        self.Pycross = []  # all of the pycross objects names that the user used in his/her code
+        self.keywords = ['setPyPy','pycross()']
+        self.Pycross = []
 
         self.MainFile = None
 
@@ -51,6 +53,8 @@ class net:
             "RP": self.readPackages,
             "SMF": self.sendMainFile,
             "SP": self.sendPackages,
+            "RO": self.readOutput,
+            "RE": self.readError,
             "end": None
         }
 
@@ -60,12 +64,25 @@ class net:
             for package in self.missing_packages:
                 os.remove(f'{package}.py')
 
+    def sendOutput(self,message):
+        self.send("RO",message)
+
+
+    def readOutput(self,message):
+        print(message)
+
+    def sendError(self,error):
+        self.send("RE",error)
+
+
+    def readError(self,error):
+        sys.stderr.write(str(error))
+
+
     def sendFunc(self, func):
         self.send("RF", func)
 
-
     def readFunc(self, func):
-
         if self.MainFile == None:
             self.send("SMF", "")
             return
@@ -80,11 +97,10 @@ class net:
         if code is not None:
             code = preprocessing.filesetup(self.keywords,code)
         try:
-
             self.MainFile = import_module('MainFile')
             self.send('SF', '')
 
-        except ModuleNotFoundError as error:
+        except ModuleNotFoundError:
             packages = self.FindPackages(code)
             self.send('SP', packages)
 
@@ -165,28 +181,27 @@ class net:
         return  self.missing_packages
 
 
-    # def filesetup(self, code):
-    #     match = re.search('[\s\S]*import\s*pycross', code)
-    #
-    #     buffer = code.replace(match.group(), '').split('\n')
-    #
-    #     lines = [[line for line in buffer if key in line] for key in self.keywords]
-    #     for line_per_key in lines:
-    #         for line in line_per_key:
-    #             obj_name = line.split(".")[0].replace(" ", "")
-    #             if obj_name not in self.Pycross:
-    #                 self.Pycross.append("@" + obj_name)
-    #                 self.Pycross.append(obj_name)
-    #     index = 0
-    #     while index < len(buffer):
-    #         for obj in self.Pycross:
-    #             if obj in buffer[index]:
-    #                 buffer.remove(buffer[index])
-    #                 index -= 1
-    #                 break
-    #         index += 1
-    #
-    #     buffer = "\n".join(buffer)
-    #     return buffer
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

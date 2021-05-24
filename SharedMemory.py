@@ -1,7 +1,7 @@
 import mmap
 import struct
 import time
-import pickle
+import serializer
 import string
 import random
 import posix_ipc
@@ -153,7 +153,7 @@ class SharedMemory:
         self.head = data_ptr
 
     def __master_send(self, data, ID, SRC, DST):
-        data_bytes = pickle.dumps(data)
+        data_bytes = serializer.dumps(data)
         size = len(data_bytes)
         size_bytes = struct.pack("<I", size)
         self.__mem_check(size + 4)
@@ -168,7 +168,7 @@ class SharedMemory:
         self.__write_message('R', ID, SRC, DST)
 
     def __slave_send(self, data, ID, SRC, DST):
-        data_bytes = pickle.dumps(data)
+        data_bytes = serializer.dumps(data)
         size = len(data_bytes)
         size_bytes = struct.pack("<I", size)
         self.__mem_check(size + 4)
@@ -216,7 +216,7 @@ class SharedMemory:
 
                 end_index = start_index
                 start_index -= object_bytes
-                yield pickle.loads(data[start_index:end_index])
+                yield serializer.loads(data[start_index:end_index])
                 end_index = start_index
                 start_index -= INT_SIZE
             except Exception:
@@ -233,7 +233,7 @@ class SharedMemory:
                 object_bytes = struct.unpack("<I", Data[start_index:end_index])[0]
                 start_index += INT_SIZE
                 end_index = start_index + object_bytes
-                yield pickle.loads(Data[start_index:end_index])
+                yield serializer.loads(Data[start_index:end_index])
                 start_index = end_index
                 end_index += INT_SIZE
             except Exception:

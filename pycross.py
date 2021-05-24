@@ -22,6 +22,11 @@ class pycross:
     def setJython(self,path):
         self._Jython=path
         self.Jython = self.meta_interpreter(self._Jython)
+   
+
+    def setIronPython(self,path):
+        self._IronPython=path
+        self.IronPython = self.meta_interpreter(self._IronPython)
 
 
     def __is_exist(self,interpreter):

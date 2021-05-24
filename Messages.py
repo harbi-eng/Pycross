@@ -1,5 +1,5 @@
 import struct
-import pickle
+import serializer
 
 class Messages:
     def __init__(self,mode):
@@ -28,7 +28,7 @@ class Messages:
 
         headerLength = struct.pack('<i', 24)    #in case data is not None, the header len is 24
 
-        dataBytes  = pickle.dumps(data)
+        dataBytes  = serializer.dumps(data)
         dataLength = struct.pack('<i', len(dataBytes))
 
         packed=headerLength + ID +src +dst +msgBytes+dataLength+dataBytes

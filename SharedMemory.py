@@ -1,4 +1,3 @@
-
 import mmap
 import struct
 import time
@@ -8,100 +7,117 @@ import random
 import posix_ipc
 import Messages
 
+
 class SharedMemory:
-    def __init__(self,mode,lock1="voidLock1",lock2="voidLock2",size=1024*20,name=None):
-        self.Queue=[]
-        self.metaDataSize=62
-        if name==None:
-            self.name=self.nameGen()
-        else:
-            self.name=name
+    def __init__(self, mode, lock1="LOCK1", lock2="LOCK2", lock3="LOCK3", lock4="LOCK4", size=1024 * 20, name=None):
+        self.__Queue = []
+        self.mode = mode
 
+        self.META_DATA_SIZE = 52
+        self.__MSG_LEN = 20
 
-        self.SharedMemorySetUp(mode,size,self.name)
+        self.name = self.__random_name_generator() if name is None else name
 
+        self.__shared_mem_setup(mode, size)
+
+        self.__sem1 = posix_ipc.Semaphore(lock1, posix_ipc.O_CREAT)
 
         if mode:
-            self.sem1 = posix_ipc.Semaphore(lock1, posix_ipc.O_CREAT)
-            self.sem2 = posix_ipc.Semaphore(lock2, posix_ipc.O_CREAT)
-            self.sem1.release()
-            self.sem2.release()
-            self.ptr_read=12
-            self.ptr_write=37
-            self.ptr_head = 4
-            self.head = self.metaDataSize
-            self.Write = self.__Mwrite
-            self.__read = self.__Mread
-            self.DataGen = self.__Mdatagen
-            self.cap = self.size - self.metaDataSize
-
+            self.__master_init(lock2,lock3,lock4)
         else:
-            self.sem1 = posix_ipc.Semaphore(lock1,posix_ipc.O_CREAT)
-            self.sem2 = posix_ipc.Semaphore(lock2, posix_ipc.O_CREAT)
-            self.ptr_read=37
-            self.ptr_write=12
-            self.ptr_head = 8
-            self.head = self.size
-            self.Write = self.__Swrite
-            self.__read = self.__Sread
-            self.DataGen = self.__Sdatagen
+            self.__slave_init(lock2,lock4,lock3)
 
-
-        self.functions = {
-            'R': self.__read,
+        self.__functions = {
+            'R': self.__recv,
         }
 
-        self.message = Messages.Messages(mode)
+        self.__message = Messages.Messages(mode)
+
+    def __master_init(self,lock2,lock3,lock4):
+        self.__sem3 = posix_ipc.Semaphore(lock3, posix_ipc.O_CREAT)
+        self.__sem4 = posix_ipc.Semaphore(lock4, posix_ipc.O_CREAT)
+        self.__sem2 = posix_ipc.Semaphore(lock2, posix_ipc.O_CREAT)
+
+        self.__sem1.release()
+        self.__sem2.release()
+        self.__sem3.release()
+        self.__sem4.release()
+
+        self.__sem2.acquire()
+        self.__sem3.acquire()
+        self.__sem4.acquire()
 
 
-    def nameGen(self,size=17):
+        self.__PTR_READ = 12
+        self.__PTR_WRITE = 32
+        self.__PTR_HEAD = 4
+
+        self.head = self.META_DATA_SIZE
+
+        self.cap = self.size - self.META_DATA_SIZE
+
+        self.send = self.__master_send
+        self.__recv = self.__master_recv
+        self.__data_generator = self.__master_data_generator
+
+    def __slave_init(self,lock2,lock3,lock4):
+        self.__sem2 = posix_ipc.Semaphore(lock2,posix_ipc.O_RDWR)
+        self.__sem3 = posix_ipc.Semaphore(lock3,posix_ipc.O_RDWR)
+        self.__sem4 = posix_ipc.Semaphore(lock4,posix_ipc.O_RDWR)
+
+        self.__PTR_READ = 32
+        self.__PTR_WRITE = 12
+        self.__PTR_HEAD = 8
+
+        self.head = self.size
+
+        self.send = self.__slave_send
+        self.__recv = self.__slave_recv
+        self.__data_generator = self.__slave_data_generator
+
+    def __random_name_generator(self, size=17):
         return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(size))
 
     def wait(self):
-        limt=3
-        t0=time.time()
-        while 1:
-            message = self.ReadMessage()
-            if message[4] != '\x00\x00\x00\x00':
-                break
-            if time.time()-t0>limt:
-                time.sleep(0.01)
-        #     0        1    2    3        4        5
-        #headerLength, ID, src, dst, dataLength, data
-
-        self.functions.get(message[4].replace(" ",""))()
+        message = self.__read_message()
+        self.__functions.get(message[4].replace(" ", ""))()
         return message
 
-
-    def SharedMemorySetUp(self,mode,size,name):
+    def __shared_mem_setup(self, mode, size):
         flag = (posix_ipc.O_RDWR, posix_ipc.O_CREAT | posix_ipc.O_TRUNC | posix_ipc.O_RDWR)[mode]
+        self.size = size + self.META_DATA_SIZE
 
         if mode:
-            self.size = size + self.metaDataSize
-            self.size=self.size+mmap.PAGESIZE-(self.size%mmap.PAGESIZE)
-            self.SharedMemory = posix_ipc.SharedMemory(name, flags=flag, size=self.size)
-            self.mem = mmap.mmap(self.SharedMemory.fd, self.size, mmap.MAP_SHARED, mmap.PROT_WRITE)
+            self.size = self.size + mmap.PAGESIZE - (self.size % mmap.PAGESIZE)
 
+        shared_mem = posix_ipc.SharedMemory(self.name, flags=flag, size=self.size)
+        self.mem = mmap.mmap(shared_mem.fd, self.size, mmap.MAP_SHARED, mmap.PROT_WRITE)
+        self.mem.flush()
+
+    def __read_message(self):
+        self.__sem3.acquire()
+
+        self.__sem2.acquire()
+
+        msg = self.mem[self.__PTR_READ:self.__PTR_READ + 20]
+
+
+        if msg != b"\x00" * 20:
+            self.mem[self.__PTR_READ:self.__PTR_READ + 20] = b"\x00" * 20
             self.mem.flush()
 
-        else:
-            self.size = size + self.metaDataSize
-            self.SharedMemory = posix_ipc.SharedMemory(name, size=self.size)
-            self.mem = mmap.mmap(self.SharedMemory.fd, self.size, mmap.MAP_SHARED, mmap.PROT_WRITE)
+        return self.__message.unpack(msg)
+
+    def __write_message(self, mess, ID, SRC, DST):
+        msg = self.__message.pack(mess, ID, SRC, DST)
+        self.mem[self.__PTR_WRITE:self.__PTR_WRITE + len(msg)] = msg
+        self.mem.flush()
+
+        self.__sem2.release()
+
+        self.__sem4.release()
 
 
-    def ReadMessage(self):
-        with self.sem2:
-            msg = self.mem[self.ptr_read:self.ptr_read + 25]
-            self.mem[self.ptr_read:self.ptr_read + 25] = b"\x00" * 25
-            self.mem.flush()
-        return self.message.unpack(msg)
-
-    def WriteMessage(self,mess,ID,SRC,DST):
-        msg=self.message.pack(mess,ID,SRC,DST)
-        with self.sem2:
-            self.mem[self.ptr_write:self.ptr_write + len(msg)] = msg
-            self.mem.flush()
 
     @property
     def cap(self):
@@ -109,127 +125,144 @@ class SharedMemory:
 
     @cap.setter
     def cap(self, value):
-
         self.mem[0:4] = struct.pack("<I", value)
 
     @property
     def head(self):
-        return struct.unpack("<I", self.mem[self.ptr_head:self.ptr_head + 4])[0]
+        return struct.unpack("<I", self.mem[self.__PTR_HEAD:self.__PTR_HEAD + 4])[0]
 
     @head.setter
     def head(self, value):
-        self.mem[self.ptr_head:self.ptr_head + 4] = struct.pack("<I", value)
+        self.mem[self.__PTR_HEAD:self.__PTR_HEAD + 4] = struct.pack("<I", value)
 
-    def MemCheck(self, length):
-        if length > self.size-self.metaDataSize:
-            print(length,self.size)
+    def __mem_check(self, length):
+        if length > self.size - self.META_DATA_SIZE:
             raise Exception(f"the data size {length} is bigger than the shared memory ")
+
         while self.cap < length:
-            with self.sem1: time.sleep(0.0001)
+            with self.__sem1: time.sleep(0.00001)
 
+    def __master_mem_write(self, size_ptr, size, data_ptr, data):
+        self.mem[self.head:size_ptr] = size
+        self.mem[size_ptr:data_ptr] = data
+        self.head = data_ptr
 
-    def __Mwrite(self,data,ID,SRC,DST):
+    def __slave_mem_write(self, size_ptr, size, data_ptr, data):
+        self.mem[size_ptr:self.head] = size
+        self.mem[data_ptr:size_ptr] = data
+        self.head = data_ptr
 
-        B_data = pickle.dumps(data)
-        length = len(B_data)
+    def __master_send(self, data, ID, SRC, DST):
+        data_bytes = pickle.dumps(data)
+        size = len(data_bytes)
+        size_bytes = struct.pack("<I", size)
+        self.__mem_check(size + 4)
 
-        B_length = struct.pack("<I", length)
-        self.MemCheck(length + 4)
-
-        with self.sem1:
-            ptr_end_length = self.head + 4
-            ptr_end_data = ptr_end_length + length
-            self.mem[self.head:ptr_end_length] = B_length
-            self.mem[ptr_end_length:ptr_end_data] = B_data
-            self.head = ptr_end_data
-            self.cap = self.cap - length - 4
+        with self.__sem1:
+            size_ptr = self.head + 4
+            data_ptr = size_ptr + size
+            self.__master_mem_write(size_ptr, size_bytes, data_ptr, data_bytes)
+            self.cap = self.cap - size - 4
             self.mem.flush()
-        with self.sem2:
-            self.WriteMessage('R',ID,SRC,DST)
 
-    def __Mread(self):
-        with self.sem1:
-            slave_head=struct.unpack("<i",self.mem[8:12])[0]
-            slave_byte_stream = self.mem[slave_head:self.size]
-            self.cap = self.size - self.head + self.metaDataSize
+        self.__write_message('R', ID, SRC, DST)
+
+    def __slave_send(self, data, ID, SRC, DST):
+        data_bytes = pickle.dumps(data)
+        size = len(data_bytes)
+        size_bytes = struct.pack("<I", size)
+        self.__mem_check(size + 4)
+
+        with self.__sem1:
+            size_ptr = self.head - 4
+            data_ptr = size_ptr - size
+            self.__slave_mem_write(size_ptr, size_bytes, data_ptr, data_bytes)
+            self.cap = self.cap - size - 4
+            self.mem.flush()
+
+        self.__write_message('R', ID, SRC, DST)
+
+    def __master_recv(self):
+        with self.__sem1:
+            slave_head = struct.unpack("<i", self.mem[8:12])[0]
+            slave_data = self.mem[slave_head:self.size]
 
             self.mem[8:12] = struct.pack("<i", self.size)
-
+            self.cap = self.size - self.head + self.META_DATA_SIZE
             self.mem.flush()
-        self.Queue.append(self.DataGen(slave_byte_stream))
 
-    def __Mdatagen(self,Data):
-        End_index = len(Data)
-        Start_index = End_index - 4
+        self.__Queue.append(self.__data_generator(slave_data))
+
+    def __slave_recv(self):
+        with self.__sem1:
+            master_head = struct.unpack("<i", self.mem[4:8])[0]
+            master_data = self.mem[self.META_DATA_SIZE:master_head]
+
+            self.mem[4:8] = struct.pack("<i", self.META_DATA_SIZE)
+            self.cap = self.head
+            self.mem.flush()
+
+        self.__Queue.append(self.__data_generator(master_data))
+
+    @staticmethod
+    def __master_data_generator(data):
+        INT_SIZE = 4
+        end_index = len(data)
+        start_index = end_index - INT_SIZE
 
         while 1:
             try:
-                End_object_bytes = struct.unpack("<I", Data[Start_index:End_index])[0]
+                object_bytes = struct.unpack("<I", data[start_index:end_index])[0]
 
-                End_index = Start_index
-                Start_index -= End_object_bytes
-                yield pickle.loads(Data[Start_index:End_index])
-                End_index = Start_index
-                Start_index -= 4
+                end_index = start_index
+                start_index -= object_bytes
+                yield pickle.loads(data[start_index:end_index])
+                end_index = start_index
+                start_index -= INT_SIZE
+            except Exception:
+                break
 
-
-            except Exception: break
-
-    def __Swrite(self,data,ID,SRC,DST):
-        B_data = pickle.dumps(data)
-        length = len(B_data)
-
-        B_length = struct.pack("<I", length)
-
-        self.MemCheck(length)
-
-        with self.sem1:
-            ptr_end_length = self.head - 4
-            ptr_end_data = ptr_end_length - length
-            self.cap = self.cap - length - 4
-            self.mem[ptr_end_length:self.head] = B_length
-            self.mem[ptr_end_data:ptr_end_length] = B_data
-            self.head = ptr_end_data
-            self.mem.flush()
-        with self.sem2:
-            self.WriteMessage('R',ID,SRC,DST)
-
-
-    def __Sread(self):
-        with self.sem1:
-            head = self.head
-            master_head = struct.unpack("<i",self.mem[4:8])[0]
-            master_byte_stream = self.mem[self.metaDataSize:master_head]
-            self.cap = head
-
-            self.mem[4:8] = struct.pack("<i", self.metaDataSize)
-            self.mem.flush()
-        self.Queue.append(self.DataGen(master_byte_stream))
-
-    def __Sdatagen(self,Data):
-        Start_index = 0
-        End_index = 4
+    @staticmethod
+    def __slave_data_generator(Data):
+        start_index = 0
+        end_index = 4
+        INT_SIZE = 4
 
         while 1:
             try:
-                End_Byte_object = struct.unpack("<I", Data[Start_index:End_index])[0]
-                Start_index += 4
-                End_index = Start_index + End_Byte_object
-                yield pickle.loads(Data[Start_index:End_index])
-                Start_index = End_index
-                End_index += 4
-            except Exception: break
+                object_bytes = struct.unpack("<I", Data[start_index:end_index])[0]
+                start_index += INT_SIZE
+                end_index = start_index + object_bytes
+                yield pickle.loads(Data[start_index:end_index])
+                start_index = end_index
+                end_index += INT_SIZE
+            except Exception:
+                break
 
-    def Read(self,arg=0):
-        if len(self.Queue)==0 or arg:
+    def recv(self, arg=0):
+        if len(self.__Queue) == 0 or arg:
             self.__read()
 
-        while len(self.Queue) !=0:
+        while len(self.__Queue) != 0:
             try:
-                return next(self.Queue[0])
+                return next(self.__Queue[0])
 
-            except Exception:self.Queue.pop(0)
+            except Exception:
+                self.__Queue.pop(0)
 
+    def __del__(self):
+        try:
+            self.__sem1.unlink()
+            self.__sem2.unlink()
+            self.__sem3.unlink()
+            self.__sem4.unlink()
+
+
+            self.__sem1.close()
+            self.__sem2.close()
+            self.__sem3.close()
+            self.__sem4.close()
+        except Exception as e:pass
 
 
 

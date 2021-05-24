@@ -1,6 +1,6 @@
 import socket
 import re
-import pickle
+import serializer
 from Messages import Messages
 from importlib import import_module
 import os
@@ -148,7 +148,7 @@ class net:
 
         _, ID, src, dst, msg, dataLength = self.msg.unpack(header)
         data = self.recvall(self.socket, dataLength)
-        return msg, pickle.loads(data)
+        return msg, serializer.loads(data)
 
         # server
 
@@ -164,7 +164,7 @@ class net:
         _, ID, src, dst, msg, dataLength = self.msg.unpack(header)
         data = self.recvall(self.clinet, dataLength)
 
-        return msg, pickle.loads(data)
+        return msg, serializer.loads(data)
 
     def FindPackages(self, code):
         lines = code.split('\n')

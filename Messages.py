@@ -1,11 +1,8 @@
 import struct
-import mmap
-import time
 import pickle
 
 class Messages:
-    def __init__(self,mode):#message max size = 5 bytes
-        # shared memory
+    def __init__(self,mode):
         self.mode=mode
         self.msg_len=4
 
@@ -26,7 +23,7 @@ class Messages:
         msgBytes = msg.encode()  # .encode()
         if data is None:
             headerLength = struct.pack('<i', 20)    #in case data is None, the header len is 20
-            packed=headerLength+ID + src + dst + msgBytes
+            packed=headerLength + ID + src + dst + msgBytes
             return packed
 
         headerLength = struct.pack('<i', 24)    #in case data is not None, the header len is 24
@@ -37,8 +34,6 @@ class Messages:
         packed=headerLength + ID +src +dst +msgBytes+dataLength+dataBytes
         return packed
 
-
-#headerlen,id,src,dst,msg,datalen,
     def unpack(self,packet):
         headerLength = struct.unpack('<i', packet[0:4])[0]
         ID = struct.unpack('<i', packet[4:8])[0]
@@ -46,8 +41,9 @@ class Messages:
         dst = struct.unpack('<i', packet[12:16])[0]
         msg = packet[16:20].decode().replace(" ","")
 
-        if len(msg)==0:
-            return b'\x00'
+        if headerLength==0:
+            return '\x00'
+
         if headerLength==20:
             return headerLength, ID, src, dst, msg
 

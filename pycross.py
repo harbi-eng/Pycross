@@ -17,6 +17,12 @@ class pycross:
 
     def setPyPy(self,path):
         self._pypy=path
+        self.pypy = self.meta_interpreter(self._pypy)
+
+    def setJython(self,path):
+        self._Jython=path
+        self.Jython = self.meta_interpreter(self._Jython)
+
 
     def __is_exist(self,interpreter):
         if interpreter not in self.interpreters:
@@ -28,41 +34,43 @@ class pycross:
                                               f' {mainFile} {len(self.interpreters)} {self.SharedMemory.size-self.SharedMemory.META_DATA_SIZE}',
                                               shell=True,stdout=sys.stdout,stderr=sys.stderr,))
 
+    def meta_interpreter(self,interpreterName):
+        def interpreter(ip=None,port=None):
+            def inner_pypy(function):
+                def wrapper(*args, **kwargs):
+                    if ip is not None and port is not None:
+                        self.net = net(1,ip, port)
+                        funcName,msg = function.__name__,""
+                        func=(funcName,args,kwargs)
+                        self.net.send('RF',func)
 
-    def pypy(self,ip=None,port=None):
-        def inner_pypy(function):
-            def wrapper(*args, **kwargs):
-                if ip is not None and port is not None:
-                    self.net = net(1,ip, port)
-                    funcName,msg = function.__name__,""
-                    func=(funcName,args,kwargs)
-                    self.net.send('RF',func)
+                        while 1:
+                            msg, data = self.net.recv()
+                            msg=msg.replace(' ','') # to remove the white space in the msg
 
-                    while 1:
-                        msg, data = self.net.recv()
-                        msg=msg.replace(' ','') # to remove the white space in the msg
+                            if msg == "end":
+                                return data
 
-                        if msg == "end":
-                            return data
+                            if msg=="SF":
+                                data=func
 
-                        if msg=="SF":
-                            data=func
+                            self.net.msgToFunc[msg](data)
 
-                        self.net.msgToFunc[msg](data)
+                    else:
+                        self.__is_exist(interpreterName)
+                        def_line = inspect.getsource(function).split('\n')[1]
+                        funcName = def_line[4:def_line.find('(')]
+                        self.SharedMemory.send((funcName, args, kwargs),self.message_number,0,
+                                               self.interpreters.index(interpreterName)+1)
+                        self.message_number+=1
+                        self.SharedMemory.wait()
+                        ans = self.SharedMemory.recv()
+                        return ans
+                return wrapper
+            return inner_pypy
+        return interpreter
 
-                else:
-                    self.__is_exist(self._pypy)
-                    def_line = inspect.getsource(function).split('\n')[1]
-                    funcName = def_line[4:def_line.find('(')]
-                    self.SharedMemory.send((funcName, args, kwargs),self.message_number,0,
-                                           self.interpreters.index(self._pypy)+1)
-                    self.message_number+=1
-                    self.SharedMemory.wait()
-                    ans = self.SharedMemory.recv()
-                    return ans
 
-            return wrapper
-        return inner_pypy
 
     def __del__(self):
         for proc in self.Proc:

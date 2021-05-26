@@ -14,12 +14,14 @@ required messages:
         2)send main file    ->SMF
         3)send packages     ->SP
 
-        5)read function     ->RF
-        6)read main file    ->RMF
-        7)read packages     ->RP
+        4)read function     ->RF
+        5)read main file    ->RMF
+        6)read packages     ->RP
         
-        8)read output       ->RO
-        9)read error        ->RE
+        7)read output       ->RO
+        8)read error        ->RE
+        
+        9)end communcation  ->end
 
 """
 

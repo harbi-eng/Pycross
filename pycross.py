@@ -16,17 +16,10 @@ class pycross:
         self.slavePath = __file__[::-1].replace('pycross.py'[::-1], 'slave.py'[::-1], 1)[::-1]
 
     def setPyPy(self,path):
-        self._pypy=path
-        self.pypy = self.meta_interpreter(self._pypy)
+        self.pypy = self.meta_decorator(path)
 
     def setJython(self,path):
-        self._Jython=path
-        self.Jython = self.meta_interpreter(self._Jython)
-   
-
-    def setIronPython(self,path):
-        self._IronPython=path
-        self.IronPython = self.meta_interpreter(self._IronPython)
+        self.Jython = self.meta_decorator(path)
 
 
     def __is_exist(self,interpreter):
@@ -39,9 +32,9 @@ class pycross:
                                               f' {mainFile} {len(self.interpreters)} {self.SharedMemory.size-self.SharedMemory.META_DATA_SIZE}',
                                               shell=True,stdout=sys.stdout,stderr=sys.stderr,))
 
-    def meta_interpreter(self,interpreterName):
-        def interpreter(ip=None,port=None):
-            def inner_pypy(function):
+    def meta_decorator(self,interpreter_path):
+        def decorator(ip=None,port=None):
+            def inner_decorator(function):
                 def wrapper(*args, **kwargs):
                     if ip is not None and port is not None:
                         self.net = net(1,ip, port)
@@ -62,18 +55,18 @@ class pycross:
                             self.net.msgToFunc[msg](data)
 
                     else:
-                        self.__is_exist(interpreterName)
+                        self.__is_exist(interpreter_path)
                         def_line = inspect.getsource(function).split('\n')[1]
                         funcName = def_line[4:def_line.find('(')]
                         self.SharedMemory.send((funcName, args, kwargs),self.message_number,0,
-                                               self.interpreters.index(interpreterName)+1)
+                                               self.interpreters.index(interpreter_path)+1)
                         self.message_number+=1
                         self.SharedMemory.wait()
                         ans = self.SharedMemory.recv()
                         return ans
                 return wrapper
-            return inner_pypy
-        return interpreter
+            return inner_decorator
+        return decorator
 
 
 

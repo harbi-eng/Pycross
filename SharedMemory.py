@@ -1,7 +1,7 @@
 import mmap
 import struct
 import time
-import serializer
+import pickle
 import string
 import random
 import posix_ipc
@@ -12,10 +12,14 @@ class SharedMemory:
     def __init__(self, mode, lock1="LOCK1", lock2="LOCK2", lock3="LOCK3", lock4="LOCK4", size=1024 * 20, name=None):
         self.__Queue = []
         self.mode = mode
+
         self.META_DATA_SIZE = 52
         self.__MSG_LEN = 20
+
         self.name = self.__random_name_generator() if name is None else name
+
         self.__shared_mem_setup(mode, size)
+
         self.__sem1 = posix_ipc.Semaphore(lock1, posix_ipc.O_CREAT)
 
         if mode:
@@ -26,6 +30,7 @@ class SharedMemory:
         self.__functions = {
             'R': self.__recv,
         }
+
         self.__message = Messages.Messages()
 
     def __master_init(self,lock2,lock3,lock4):
@@ -132,13 +137,17 @@ class SharedMemory:
 
     def __mem_check(self, length):
         if length > self.size - self.META_DATA_SIZE:
-            raise Exception(f"the data size {length} is bigger than the shared memory ")
+            raise Exception("the data size %s is bigger than the shared memory "%length)
 
         while self.cap < length:
             with self.__sem1: time.sleep(0.00001)
 
     def __master_mem_write(self, size_ptr, size, data_ptr, data):
         self.mem[self.head:size_ptr] = size
+        print(size_ptr)
+        print(data)
+        print(data_ptr)
+
         self.mem[size_ptr:data_ptr] = data
         self.head = data_ptr
 
@@ -148,7 +157,7 @@ class SharedMemory:
         self.head = data_ptr
 
     def __master_send(self, data, ID, SRC, DST):
-        data_bytes = serializer.dumps(data)
+        data_bytes = pickle.dumps(data,protocol=3)
         size = len(data_bytes)
         size_bytes = struct.pack("<I", size)
         self.__mem_check(size + 4)
@@ -163,7 +172,7 @@ class SharedMemory:
         self.__write_message('R', ID, SRC, DST)
 
     def __slave_send(self, data, ID, SRC, DST):
-        data_bytes = serializer.dumps(data)
+        data_bytes = pickle.dumps(data,protocol=3)
         size = len(data_bytes)
         size_bytes = struct.pack("<I", size)
         self.__mem_check(size + 4)
@@ -211,7 +220,7 @@ class SharedMemory:
 
                 end_index = start_index
                 start_index -= object_bytes
-                yield serializer.loads(data[start_index:end_index])
+                yield pickle.loads(data[start_index:end_index])
                 end_index = start_index
                 start_index -= INT_SIZE
             except Exception:
@@ -228,7 +237,7 @@ class SharedMemory:
                 object_bytes = struct.unpack("<I", Data[start_index:end_index])[0]
                 start_index += INT_SIZE
                 end_index = start_index + object_bytes
-                yield serializer.loads(Data[start_index:end_index])
+                yield pickle.loads(Data[start_index:end_index])
                 start_index = end_index
                 end_index += INT_SIZE
             except Exception:

@@ -16,6 +16,7 @@ def filesetup(keywords,code):
     count=2
     buf = []
     for line in buffer:
+        # if line not in buf:
             for index, obj in enumerate(objects):
                 if obj in line:
                     if count>0:

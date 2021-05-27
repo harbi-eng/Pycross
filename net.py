@@ -14,14 +14,12 @@ required messages:
         2)send main file    ->SMF
         3)send packages     ->SP
 
-        4)read function     ->RF
-        5)read main file    ->RMF
-        6)read packages     ->RP
+        5)read function     ->RF
+        6)read main file    ->RMF
+        7)read packages     ->RP
         
-        7)read output       ->RO
-        8)read error        ->RE
-        
-        9)end communcation  ->end
+        8)read output       ->RO
+        9)read error        ->RE
 
 """
 
@@ -29,7 +27,7 @@ required messages:
 class net:
     def __init__(self, mode, ip, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.msg = Messages(not mode)
+        self.msg = Messages()
         self.missing_packages = []
         self.keywords = ['setPyPy','pycross()']
         self.Pycross = []
@@ -64,7 +62,7 @@ class net:
         if self.MainFile is not None:
             os.remove('MainFile.py')
             for package in self.missing_packages:
-                os.remove(f'{package}.py')
+                os.remove('%s'%package.py)
 
     def sendOutput(self,message):
         self.send("RO",message)
@@ -108,7 +106,7 @@ class net:
 
     def readPackages(self, packages):
         for packageName, packageCode in packages:
-            with open(f"{packageName}.py", "w") as file:
+            with open("%s.py"%packageName, "w") as file:
                 file.write(packageCode)
                 file.close()
         self.readMainFile()
@@ -121,7 +119,7 @@ class net:
     def sendPackages(self, packages):
         packages_code = []
         for package in packages:
-            with open(f"{package}.py", "r") as file:
+            with open("%s.py"%package, "r") as file:
                 packages_code.append((package, file.read()))
                 file.close()
 
@@ -177,7 +175,7 @@ class net:
         self.missing_packages=[]
         for pack in packages:
             try:
-                exec(f'import {pack}')
+                exec('import %s'%pack)
             except ModuleNotFoundError as e:
                 self.missing_packages.append(pack)
         return  self.missing_packages

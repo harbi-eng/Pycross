@@ -18,38 +18,64 @@ _object      'ᐵ'
 
 """
 
-replacment=['None','bool' ,'int' ,'float' ,'str'   ,'\"'  ,'_object'  ,','  ,'{' ,'}' ,'[' ,']' ,'(' ,')' ,':']
-signs=     ['ᐰ'  ,'ᐱ'    , 'ᐲ' ,    'ᐳ' ,   'ᐴ'  ,'ᐿ'   ,'ᐵ'   ,'ᐶ'  ,'ᐷ','ᐸ'  ,'ᐹ','ᐺ' ,'ᐻ','ᐼ' ,'ᐽ']
+# coding=utf-8
+replacment = ['None', 'bool', 'int', 'float', 'str', '\"', '_object', ',', '{', '}', '[', ']', '(', ')', ':']
+signs = ['ᐰ', 'ᐱ', 'ᐲ', 'ᐳ', 'ᐴ', 'ᐿ', 'ᐵ', 'ᐶ', 'ᐷ', 'ᐸ', 'ᐹ', 'ᐺ', 'ᐻ', 'ᐼ', 'ᐽ']
+import sys
 
 def loads(data):
-    global signs,replacment
-    data=data.decode()
-    for s,r in zip(signs,replacment):
-        if s in data:
-            data=data.replace(s,r)
-    return eval(data[:-1])
+    global signs, replacment
+    try:
+        if "jython" in sys.executable:
+            raise Exception()
+
+        data = data.decode()
+
+
+        for s, r in zip(signs, replacment):
+
+            if s in data:
+                data = data.replace(s, r)
+        command = data[:-1]
+
+
+        result=eval(command)
+
+        return result
+
+    except:
+        # data = u' '.join(data).encode('utf-8').strip()
+        data = data.decode('utf-8')
+
+        for s, r in zip(signs,replacment):
+            s=s.decode('utf-8')
+            if s in data:
+                data = data.replace(s, r)
+
+        return eval(data[:-1])
+
+
+
 
 class obj:
     pass
 
-obj = type("obj",(),{})
 
+obj = type("obj", (), {})
 
 
 def _object(dict):
     global classesDict
-    _type=dict['className']
+    _type = dict['className']
     if _type not in classesDict.keys():
-        classesDict[_type] =  type(f"slave_{_type}",(globals()[_type],),{"__init__":func})
-    ob=classesDict[_type]()
-    ob.__dict__=dict.copy()
-
-
+        classesDict[_type] = type("slave_%s"%_type, (globals()[_type],), {"__init__": func})
+    ob = classesDict[_type]()
+    ob.__dict__ = dict.copy()
 
     return ob
 
-classesDict={}
 
+classesDict = {}
 
 
 def func(self):
@@ -57,96 +83,107 @@ def func(self):
 
 
 class person(object):
-    def __init__(self,name,color,age,hoby):
+    def __init__(self, name, color, age, hoby):
         self.name = name
         self.age = age
         self.color = color
         self.hoby = hoby
 
-    def changeName(self,name):
+    def changeName(self, name):
         self.name = name
-        
+
 
 class shope():
-    def __init__(self,person, shape,size,location):
-        self.person=person
-        self.shape=shape
-        self.size=size
-        self.location=location
+    def __init__(self, person, shape, size, location):
+        self.person = person
+        self.shape = shape
+        self.size = size
+        self.location = location
 
 
 class twon:
-    def __init__(self,name,person,shope,contry,somethingelse):
-        self.name=name
-        self.someone=person
-        self.shope=shope
-        self.contry=contry
-        self.somethingelse=somethingelse
+    def __init__(self, name, person, shope, contry, somethingelse):
+        self.name = name
+        self.someone = person
+        self.shope = shope
+        self.contry = contry
+        self.somethingelse = somethingelse
 
 
-def simpleSerilazation(_type,obj):
-    return f"{_type}ᐻ{obj}ᐼᐶ"
-
-def NoneSerilazation(_type,obj):
-    return f"{obj}ᐶ"
+def simpleSerilazation(_type, obj):
+    return "%sᐻ%sᐼᐶ"%(_type,obj)
 
 
-def strSerilazation(_type,obj):
-    return f"ᐴᐻᐿ{obj}ᐿᐼᐶ"
+def NoneSerilazation(_type, obj):
+    return "%sᐶ"%obj
 
 
-def seroObjects(retV,obj):
-    retV=f'ᐵᐻᐷ ᐴᐻᐿclassNameᐿᐼᐽᐴᐻᐿ{obj.__class__.__name__}ᐿᐼᐶ {retV}'
-    for key,value in obj.__dict__.items():
+def strSerilazation(_type, obj):
+    return "ᐴᐻᐿᐿᐿ%sᐿᐿᐿᐼᐶ"%obj
+
+
+def seroObjects(retV, obj):
+    retV = 'ᐵᐻᐷ ᐴᐻᐿclassNameᐿᐼᐽᐴᐻᐿ%sᐿᐼᐶ %s'%(obj.__class__.__name__,retV)
+    for key, value in obj.__dict__.items():
         Vtype, VSeroFunc = ser_switch(value)
         Ktype, KSeroFunc = ser_switch(key)
-        retV=f'{retV}{KSeroFunc(Ktype,key)[:-1]}ᐽ{VSeroFunc(Vtype,value)} '
-    retV=f'{retV}ᐸᐼᐶ'
+        retV = '%s%sᐽ%s '%(retV,KSeroFunc(Ktype, key)[:-1],VSeroFunc(Vtype, value))
+    retV = '%sᐸᐼᐶ'%retV
     return retV
 
 
-def seroDict(retV,dict):
-    retV=f'ᐷ{retV}'
-    for key,value in dict.items():
+def seroDict(retV, dict):
+    retV = 'ᐷ%s'%retV
+    for key, value in dict.items():
         Vtype, VSeroFunc = ser_switch(value)
         Ktype, KSeroFunc = ser_switch(key)
 
-        retV=f'{retV}{KSeroFunc(Ktype,key)[:-1]}ᐽ{VSeroFunc(Vtype,value)} '
-    retV=f'{retV}ᐸᐶ'
+        retV = '%s%sᐽ%s '%(retV,KSeroFunc(Ktype, key)[:-1],VSeroFunc(Vtype, value))
+    retV = '%sᐸᐶ'%retV
     return retV
 
-def seroList(retV,List):
-    retV=f'ᐹ{retV}'
+
+def seroList(retV, List):
+    retV = 'ᐹ%s'%retV
     for value in List:
-        _type,SeroFunc = ser_switch(value)
-        retV=f'{retV}{SeroFunc(_type,value)} '
-    retV=f'{retV}ᐺᐶ'
+        _type, SeroFunc = ser_switch(value)
+        retV = '%s%s '%(retV,SeroFunc(_type,value))
+    retV = '%sᐺᐶ'%retV
     return retV
 
-def seroTuples(retV,tupel):
-    retV=f'ᐻ{retV}'
+
+def seroTuples(retV, tupel):
+    retV = 'ᐻ%s'%retV
     for value in tupel:
-        _type,SeroFunc = ser_switch(value)
-        retV=f'{retV}{SeroFunc(_type,value)} '
-    retV=f'{retV}ᐼᐶ'
+        _type, SeroFunc = ser_switch(value)
+        retV = '%s%s '%(retV,SeroFunc(_type,value))
+    retV = '%sᐼᐶ'%retV
     return retV
 
 
 def ser_switch(obj):
     switcher = {
-        type(None) : ("ᐰ",NoneSerilazation),
-        bool       : ("ᐱ",simpleSerilazation),
-        int        : ("ᐲ",simpleSerilazation),
-        float      : ("ᐳ",simpleSerilazation),
-        str        : ("ᐴ",strSerilazation),
-        list       : ("",seroList),
-        tuple      : ("",seroTuples),
-        dict       : ("",seroDict)
+        type(None): ("ᐰ", NoneSerilazation),
+        bool: ("ᐱ", simpleSerilazation),
+        int: ("ᐲ", simpleSerilazation),
+        float: ("ᐳ", simpleSerilazation),
+        str: ("ᐴ", strSerilazation),
+        list: ("", seroList),
+        tuple: ("", seroTuples),
+        dict: ("", seroDict),
+        object:("", seroObjects)
     }
-    return switcher.get(type(obj), ("",seroObjects))
+    return switcher.get(type(obj), )
 
 
 def dumps(obj):
-    _type,SeroFunc = ser_switch(obj)
-    SeroFunc(_type,obj)
-    return SeroFunc(_type,obj).encode()
+    _type, SeroFunc = ser_switch(obj)
+    result=SeroFunc(_type, obj)
+    # print(result.encode('utf-8'))
+    try:
+        if "jython" in sys.executable:
+            raise Exception()
+        return result.encode('utf-8')
+    except Exception:
+        return unicode(result,'utf-8').encode('utf-8')
+

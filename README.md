@@ -15,7 +15,3 @@ by this project you can for example use python 2.7 interpreter with python 3.x i
 ---
 
 to be able to use the shared memory module, you have use a posix operating system such as linux, the shared memory won't work in windows or macOS, also you you can only use it with CPython and PyPy, becasue of the C-extensions supports in these two interpreters, if you want to use the project with another interprters or in another operating system such as windows or macOS, you can use the Net Module to handle the communication between the interpreters.
-
-
-
-

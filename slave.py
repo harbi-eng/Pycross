@@ -3,7 +3,7 @@ from net import net
 import socket
 from importlib import import_module
 import preprocessing
-from std_override import output,error
+from std_overwrite import output,error
 
 
 
@@ -31,7 +31,7 @@ class Slave:
         host = socket.gethostbyname(socket.gethostname())
 
 
-        self.net = net(0, host, 1701)
+        self.net = net(0, host, 1705)
 
         stdout = output(self.net)
         stderr = error(self.net)
@@ -57,7 +57,12 @@ class Slave:
         while 1:
             data=self.SharedMemory.wait()
             Hlen,ID,SRC,DST,MSG = data
-            funcName,args,kwargs = self.SharedMemory.recv()
+            data=self.SharedMemory.recv()
+            print(data)
+            funcName = data[0]
+            args= data[1]
+
+            kwargs= data[2]
             Func = getattr(self.MainFile,funcName)
             result = Func(*args,**kwargs)
 

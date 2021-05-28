@@ -36,13 +36,8 @@ def loads(data):
 
             if s in data:
                 data = data.replace(s, r)
-        command = data[:-1]
-
-
-        result=eval(command)
-
-        return result
-
+                
+        return eval(data[:-1])
     except:
         # data = u' '.join(data).encode('utf-8').strip()
         data = data.decode('utf-8')
@@ -55,13 +50,6 @@ def loads(data):
         return eval(data[:-1])
 
 
-
-
-class obj:
-    pass
-
-
-obj = type("obj", (), {})
 
 
 def _object(dict):
@@ -80,34 +68,6 @@ classesDict = {}
 
 def func(self):
     pass
-
-
-class person(object):
-    def __init__(self, name, color, age, hoby):
-        self.name = name
-        self.age = age
-        self.color = color
-        self.hoby = hoby
-
-    def changeName(self, name):
-        self.name = name
-
-
-class shope():
-    def __init__(self, person, shape, size, location):
-        self.person = person
-        self.shape = shape
-        self.size = size
-        self.location = location
-
-
-class twon:
-    def __init__(self, name, person, shope, contry, somethingelse):
-        self.name = name
-        self.someone = person
-        self.shope = shope
-        self.contry = contry
-        self.somethingelse = somethingelse
 
 
 def simpleSerilazation(_type, obj):
